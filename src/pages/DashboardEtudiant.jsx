@@ -1,3 +1,4 @@
+import { envoyerEmailReservation, envoyerEmailVendeur } from "../email";
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import toast from "react-hot-toast";
@@ -67,42 +68,75 @@ export default function DashboardEtudiant() {
     setReservations(data || []);
   }
 
-  async function reserver(offre) {
-    if (!userId) return toast.error("Tu dois être connecté");
+ async function reserver(offre) {
+  if (!userId) return toast.error("Tu dois être connecté");
 
-    // Vérifier que l'étudiant n'a pas déjà réservé ce plat
-    const dejaReserve = reservations.some(r => r.offre_id === offre.id);
-    if (dejaReserve) {
-      toast.error("Tu as déjà réservé ce plat !");
-      return;
-    }
-
-    setLoading(true);
-    const code = "FS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    const { error } = await supabase.from("reservations").insert({
-      etudiant_id: userId,
-      offre_id: offre.id,
-      code_retrait: code,
-    });
-
-    if (error) {
-      console.error("Erreur réservation:", error);
-      toast.error("Erreur lors de la réservation : " + error.message);
-    } else {
-      // Décrémenter la quantité
-      await supabase
-        .from("offres")
-        .update({ quantite: offre.quantite - 1 })
-        .eq("id", offre.id);
-
-      toast.success("🎉 Réservé ! Ton code : " + code);
-      await chargerOffres();
-      await chargerReservations();
-      setOnglet("reservations");
-    }
-    setLoading(false);
+  const dejaReserve = reservations.some(r => r.offre_id === offre.id);
+  if (dejaReserve) {
+    toast.error("Tu as déjà réservé ce plat !");
+    return;
   }
+
+  setLoading(true);
+  const code = "FS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const { error } = await supabase.from("reservations").insert({
+    etudiant_id: userId,
+    offre_id: offre.id,
+    code_retrait: code,
+  });
+
+  if (error) {
+    toast.error("Erreur lors de la réservation : " + error.message);
+  } else {
+    await supabase.from("offres")
+      .update({ quantite: offre.quantite - 1 })
+      .eq("id", offre.id);
+
+    toast.success("🎉 Réservé ! Ton code : " + code);
+
+    // Récupérer les infos de l'étudiant et du vendeur
+    const { data: etudiant } = await supabase
+      .from("utilisateurs")
+      .select("nom, email")
+      .eq("id", userId)
+      .single();
+
+    const { data: vendeur } = await supabase
+      .from("utilisateurs")
+      .select("nom, email")
+      .eq("id", offre.vendeur_id)
+      .single();
+
+    // Envoyer les emails
+    if (etudiant) {
+      await envoyerEmailReservation({
+        emailEtudiant: etudiant.email,
+        nomEtudiant: etudiant.nom,
+        nomPlat: offre.nom_plat,
+        codeRetrait: code,
+        prixReduit: Number(offre.prix_reduit).toLocaleString("fr-FR"),
+        heureLimit: offre.heure_limite,
+      });
+    }
+
+    if (vendeur) {
+      await envoyerEmailVendeur({
+        emailVendeur: vendeur.email,
+        nomVendeur: vendeur.nom,
+        nomPlat: offre.nom_plat,
+        nomEtudiant: etudiant?.nom || "Étudiant",
+        codeRetrait: code,
+        prixReduit: Number(offre.prix_reduit).toLocaleString("fr-FR"),
+      });
+    }
+
+    await chargerOffres();
+    await chargerReservations();
+    setOnglet("reservations");
+  }
+  setLoading(false);
+}
 
   async function deconnexion() {
     await supabase.auth.signOut();
@@ -170,20 +204,23 @@ export default function DashboardEtudiant() {
           ))}
         </div>
 
-        {/* ONGLETS */}
-        <div className="flex gap-2 mb-6">
-          {[
-            { id: "offres", label: "🍽️ Offres du jour" },
-            { id: "reservations", label: "✅ Mes réservations" },
-          ].map(o => (
-            <button key={o.id} onClick={() => setOnglet(o.id)}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${onglet === o.id
-                ? "bg-green-600 text-white shadow-md"
-                : "bg-white text-gray-500 border border-gray-200 hover:border-green-300"}`}>
-              {o.label}
-            </button>
-          ))}
-        </div>
+       <div className="flex gap-2 mb-6 flex-wrap">
+  {[
+    { id: "offres", label: "🍽️ Offres du jour" },
+    { id: "reservations", label: "✅ Mes réservations" },
+  ].map(o => (
+    <button key={o.id} onClick={() => setOnglet(o.id)}
+      className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${onglet === o.id
+        ? "bg-green-600 text-white shadow-md"
+        : "bg-white text-gray-500 border border-gray-200 hover:border-green-300"}`}>
+      {o.label}
+    </button>
+  ))}
+  <a href="/carte"
+    className="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white text-gray-500 border border-gray-200 hover:border-green-300 hover:text-green-600">
+    🗺️ Carte
+  </a>
+</div>
 
         {/* ONGLET : OFFRES */}
         {onglet === "offres" && (

@@ -208,7 +208,6 @@ export default function Accueil() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { nom: "Kouassi Jean", role: "Étudiant en L2", avis: "Grâce à FoodSave CI je mange à moins de 500 FCFA le midi. C'est incroyable !", avatar: "🧑🏿", note: 5 },
               { nom: "Adjoua Marie", role: "Étudiante en Master", avis: "L'application est super simple. Je réserve en 30 secondes depuis mon téléphone !", avatar: "👩🏿", note: 5 },
               { nom: "Maquis Le Bonheur", role: "Restaurant partenaire", avis: "Je ne jette plus rien ! Mes invendus partent en quelques minutes grâce à FoodSave.", avatar: "🍽️", note: 5 },
             ].map((t, i) => (

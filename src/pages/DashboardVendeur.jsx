@@ -14,7 +14,8 @@ export default function DashboardVendeur() {
   const [form, setForm] = useState({
     nom_plat: "", description: "",
     prix_normal: "", prix_reduit: "",
-    quantite: "", heure_limite: ""
+    quantite: "", heure_limite: "",
+    adresse: "", latitude: "", longitude: ""
   });
 
   useEffect(() => {
@@ -92,6 +93,24 @@ export default function DashboardVendeur() {
     return data.publicUrl;
   }
 
+  function detecterPosition() {
+    if (!navigator.geolocation) {
+      toast.error("La géolocalisation n'est pas supportée par ton navigateur");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setForm(f => ({
+          ...f,
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6)
+        }));
+        toast.success("📍 Position détectée !");
+      },
+      () => toast.error("Impossible de détecter ta position. Vérifie les permissions.")
+    );
+  }
+
   async function publierOffre(e) {
     e.preventDefault();
     if (Number(form.prix_reduit) >= Number(form.prix_normal)) {
@@ -115,13 +134,21 @@ export default function DashboardVendeur() {
       quantite: Number(form.quantite),
       heure_limite: form.heure_limite,
       image_url: imageUrl,
+      adresse: form.adresse || null,
+      latitude: form.latitude ? Number(form.latitude) : null,
+      longitude: form.longitude ? Number(form.longitude) : null,
     });
 
     if (error) {
       toast.error("Erreur lors de la publication : " + error.message);
     } else {
       toast.success("Offre publiée avec succès !");
-      setForm({ nom_plat: "", description: "", prix_normal: "", prix_reduit: "", quantite: "", heure_limite: "" });
+      setForm({
+        nom_plat: "", description: "",
+        prix_normal: "", prix_reduit: "",
+        quantite: "", heure_limite: "",
+        adresse: "", latitude: "", longitude: ""
+      });
       setImageFile(null);
       setImagePreview(null);
       await chargerDonnees();
@@ -234,10 +261,8 @@ export default function DashboardVendeur() {
                   const red = Math.round((1 - o.prix_reduit / o.prix_normal) * 100);
                   return (
                     <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all overflow-hidden">
-                      {/* Image du plat */}
                       {o.image_url ? (
-                        <img src={o.image_url} alt={o.nom_plat}
-                          className="w-full h-40 object-cover" />
+                        <img src={o.image_url} alt={o.nom_plat} className="w-full h-40 object-cover" />
                       ) : (
                         <div className="w-full h-40 bg-orange-50 flex items-center justify-center">
                           <span className="text-5xl">🍽️</span>
@@ -248,6 +273,9 @@ export default function DashboardVendeur() {
                           <div className="flex-1">
                             <h3 className="font-bold text-gray-800 text-lg">{o.nom_plat}</h3>
                             <p className="text-gray-400 text-sm">{o.description}</p>
+                            {o.adresse && (
+                              <p className="text-gray-400 text-xs mt-1">📍 {o.adresse}</p>
+                            )}
                           </div>
                           <span className="ml-2 bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-lg">-{red}%</span>
                         </div>
@@ -366,6 +394,35 @@ export default function DashboardVendeur() {
                     value={form.heure_limite}
                     onChange={e => setForm({ ...form, heure_limite: e.target.value })} required />
                 </div>
+              </div>
+
+              {/* LOCALISATION */}
+              <div className="border-t border-gray-100 pt-4">
+                <label className="text-sm font-medium text-gray-600 mb-3 block">
+                  📍 Localisation du restaurant
+                </label>
+
+                <div className="mb-3">
+                  <input
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
+                    placeholder="Ex: Cocody, Abidjan"
+                    value={form.adresse}
+                    onChange={e => setForm({ ...form, adresse: e.target.value })}
+                  />
+                </div>
+
+                <button type="button" onClick={detecterPosition}
+                  className="w-full border-2 border-orange-200 text-orange-500 hover:bg-orange-50 font-semibold py-3 rounded-xl transition-all text-sm">
+                  📍 Détecter ma position automatiquement
+                </button>
+
+                {form.latitude && form.longitude && (
+                  <div className="mt-3 bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+                    <p className="text-green-700 text-sm font-semibold">
+                      ✅ Position enregistrée : {form.latitude}, {form.longitude}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button type="submit" disabled={loading || reduction < 0}

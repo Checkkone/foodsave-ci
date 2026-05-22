@@ -6,6 +6,7 @@ import Connexion from "./pages/Connexion";
 import DashboardVendeur from "./pages/DashboardVendeur";
 import DashboardEtudiant from "./pages/DashboardEtudiant";
 import Chatbot from "./pages/Chatbot";
+import Carte from "./pages/Carte";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/connexion" element={<Connexion />} />
         <Route path="/vendeur" element={<DashboardVendeur />} />
         <Route path="/etudiant" element={<DashboardEtudiant />} />
+        <Route path="/carte" element={<Carte />} />
       </Routes>
     </BrowserRouter>
   );
